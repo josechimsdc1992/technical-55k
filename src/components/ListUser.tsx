@@ -1,31 +1,32 @@
 import { User } from "../types"
 interface Props{
+    deleteUser:(e:string)=>void,
     users:User[],
     showColors:boolean
 }
 
-export const ListUser=({users,showColors}:Props)=>{
+export const ListUser=({deleteUser,users,showColors}:Props)=>{
     return(
         <table width={'100%'}>
             <thead>
-                <th>Foto</th>
-                <th>Nombre</th>
-                <th>Apellido</th>
-                <th>Pais</th>
-                <th>Acciones</th>
+                <td>Foto</td>
+                <td>Nombre</td>
+                <td>Apellido</td>
+                <td>Pais</td>
+                <td>Acciones</td>
             </thead>
             <tbody>
                 {users.map((user,index)=>{
                     const backgroundColor=index%2===0?'#333':'#555'
                     const color=showColors?backgroundColor:'transparent'
                     return (
-                        <tr style={{backgroundColor:color}} key={user.id?.value}>
+                        <tr style={{backgroundColor:color}} key={user.login?.uuid}>
                             <td><img src={user.picture?.thumbnail}></img></td>
                         <td>{user.name?.first}</td>
                         <td>{user.name?.last}</td>
                         <td>{user.location?.country}</td>
                         <td>
-                            <button>Delete</button>
+                            <button onClick={()=>{deleteUser(user.login?.uuid)}}>Delete</button>
                         </td>
                         </tr>
                     )

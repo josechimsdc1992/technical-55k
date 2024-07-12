@@ -1,3 +1,8 @@
+declare global{
+    interface Array<T>{
+        toSorted(compareFn?:(a:T,b:T)=>number)
+    }
+}
 export interface Welcome {
     results: User[];
     info:    Info;
