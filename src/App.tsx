@@ -2,36 +2,41 @@ import { useMemo, useState } from 'react'
 import './App.css'
 import { Welcome, type User } from './types'
 import { ListUser,SortBy } from './components/ListUser'
-import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query'
-
-
+import { Result } from './components/Results'
+import { useUsers } from './hooks/useUsers'
+import { InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query'
 
 function App() {
 
-  const fetchProjects = async ({ pageParam }:{pageParam:Number}):Promise<Welcome> => {
-    const res = await fetch(`https://randomuser.me/api/?results=10&seed=abc&page=${pageParam}`)
-    return res.json()
-  }
-
-  const {
-    data,
+  let {
+    users,
     error,
     fetchNextPage,
     hasNextPage,
+    refetch,
     status,
-  } = useInfiniteQuery<Welcome,Error,InfiniteData<Welcome,unknown>,string[],number>({
-    queryKey: ['projects'],
-    queryFn: fetchProjects,
-    initialPageParam: 0,
-    getNextPageParam: (lastPage) => {
-      const actualPage=lastPage.info.page
-      return actualPage>10?undefined: lastPage.info.page+1
-    },
-  })
-  
+  } =useUsers()
 
+  const deleteUsers=async (uuid:string | undefined)=>{
+    return await uuid
+  }
+
+  const queryclient=useQueryClient()
+
+  const {mutate,isPending}=useMutation({
+    mutationFn:deleteUsers,
+    onSuccess:async(uuid:string | undefined)=>{
+      await queryclient.setQueryData(['projects'],(oldData:InfiniteData<Welcome,number>):InfiniteData<Welcome,number>=>{
+        for(let i=0;i<oldData.pages.length;i++){
+
+          const newUsers=uuid===undefined? oldData.pages[i].results: oldData.pages[i].results?.filter((user)=>user.login?.uuid!=uuid)  
+          oldData.pages[i].results=newUsers
+        }
+        return oldData
+    })
+    }
+  })
   //const originalUsers=useRef<User[]>([])
-  const users:User[] | undefined=data?.pages?.flatMap(page=>page.results)
   const [showColors,setShowCColors]=useState(false)
   const [sorting,setSorting]=useState<SortBy>(SortBy.NONE)
   const [filterCountry,setFilterCountry]=useState<String | null>(null)
@@ -46,13 +51,12 @@ function App() {
   }
 
   const handleReset=async()=>{
-    //await refetch()
+    await refetch()
   }
 
   const handleDelete=(uuid:string | undefined)=>{
     if(uuid!=undefined){
-      //const filteredUsers=users.filter((user)=>user.login?.uuid!=uuid)
-      //setUsers(filteredUsers)
+      mutate(uuid)
     }
   }
 
@@ -82,6 +86,7 @@ function App() {
     <>
       <div>
         <h1>Prueba Tecnica</h1>
+        <Result></Result>
         <header>
           <button onClick={toggleColors}>Colorear</button>
           <button onClick={toggleSortByCountry}>{sorting==SortBy.COUNTRY? 'No ordenar por pais':'Ordenar por pais'}</button>
@@ -93,7 +98,7 @@ function App() {
         <main>
           {users!=undefined && users.length>0 && <ListUser changeSorting={handleChangeSort} deleteUser={handleDelete} showColors={showColors} users={sortedUsers}></ListUser>}
           {status === 'pending' && <p>Cargando</p>}
-          {status === 'error' && <p>Error:{error.message}</p>}
+          {status === 'error' && <p>Error:{error?.message}</p>}
           {status !== 'error' && status !== 'pending' && hasNextPage && <button onClick={()=>{fetchNextPage()}}>Cargar Mas...</button>}
           
         </main>
@@ -102,5 +107,6 @@ function App() {
     </>
   )
 }
+
 
 export default App
