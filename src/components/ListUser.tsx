@@ -1,18 +1,25 @@
 import { User } from "../types"
 interface Props{
-    deleteUser:(e:string)=>void,
+    changeSorting:(sort:SortBy)=>void
+    deleteUser:(e:string | undefined)=>void,
     users:User[],
     showColors:boolean
 }
+export enum SortBy{
+    NONE='',
+    NAME='name',
+    LAST='last',
+    COUNTRY='country'
+}
 
-export const ListUser=({deleteUser,users,showColors}:Props)=>{
+export const ListUser=({changeSorting,deleteUser,users,showColors}:Props)=>{
     return(
         <table width={'100%'}>
             <thead>
                 <td>Foto</td>
-                <td>Nombre</td>
-                <td>Apellido</td>
-                <td>Pais</td>
+                <td className="pointer" onClick={()=>{changeSorting(SortBy.NAME)}}>Nombre</td>
+                <td className="pointer" onClick={()=>{changeSorting(SortBy.LAST)}}>Apellido</td>
+                <td className="pointer" onClick={()=>{changeSorting(SortBy.COUNTRY)}}>Pais</td>
                 <td>Acciones</td>
             </thead>
             <tbody>

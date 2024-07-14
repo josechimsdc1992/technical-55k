@@ -1,6 +1,6 @@
 declare global{
     interface Array<T>{
-        toSorted(compareFn?:(a:T,b:T)=>number)
+        toSorted(compareFn?:(a:T,b:T)=>number| undefined)
     }
 }
 export interface Welcome {
