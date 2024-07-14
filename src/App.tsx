@@ -1,28 +1,41 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import './App.css'
-import { type User } from './types'
+import { Welcome, type User } from './types'
 import { ListUser,SortBy } from './components/ListUser'
-import { useQuery } from '@tanstack/react-query'
+import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query'
 
-const fetchUsers=async (currentPage:number)=>{
-  return await fetch(`https://randomuser.me/api/?results=10&seed=abc&page=${currentPage}`)
-  .then(async res=>{
-    if(!res.ok) throw new Error('Error en la peticion')
-    return await res.json()
-  })
-}
+
 
 function App() {
+
+  const fetchProjects = async ({ pageParam }:{pageParam:Number}):Promise<Welcome> => {
+    const res = await fetch(`https://randomuser.me/api/?results=10&seed=abc&page=${pageParam}`)
+    return res.json()
+  }
+
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    status,
+  } = useInfiniteQuery<Welcome,Error,InfiniteData<Welcome,unknown>,string[],number>({
+    queryKey: ['projects'],
+    queryFn: fetchProjects,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      const actualPage=lastPage.info.page
+      return actualPage>10?undefined: lastPage.info.page+1
+    },
+  })
   
-  const [users,setUsers]=useState<User[]>([])
-  const originalUsers=useRef<User[]>([])
+
+  //const originalUsers=useRef<User[]>([])
+  const users:User[] | undefined=data?.pages?.flatMap(page=>page.results)
   const [showColors,setShowCColors]=useState(false)
   const [sorting,setSorting]=useState<SortBy>(SortBy.NONE)
   const [filterCountry,setFilterCountry]=useState<String | null>(null)
-  const [showLoading,setShowLoading]=useState(false)
-  const [showError,setShowError]=useState(false)
-  const [page,setPage]=useState(1)
-  
+
   const toggleColors=()=>{
     setShowCColors(!showColors)
   }
@@ -32,15 +45,14 @@ function App() {
     setSorting(newSortingValue)
   }
 
-  const handleReset=()=>{
-    setUsers(originalUsers.current)
-    setPage(1)
+  const handleReset=async()=>{
+    //await refetch()
   }
 
   const handleDelete=(uuid:string | undefined)=>{
     if(uuid!=undefined){
-      const filteredUsers=users.filter((user)=>user.login?.uuid!=uuid)
-      setUsers(filteredUsers)
+      //const filteredUsers=users.filter((user)=>user.login?.uuid!=uuid)
+      //setUsers(filteredUsers)
     }
   }
 
@@ -48,32 +60,7 @@ function App() {
     setSorting(sort)
   }
 
-  
-
-  useEffect(()=>{
-    setShowLoading(true)
-    setShowError(false)
-
-    fetchUsers(page)
-    .then(res=>{
-      setUsers( prevUsers=>prevUsers.concat(res.results))
-      if(page==1){
-        originalUsers.current=res.results
-      }
-      
-    })
-    .catch(er=>{
-      console.log(er)
-      setShowError(true)
-    })
-    .finally(
-      ()=>{
-        setShowLoading(false)
-      }
-    )
-  },[page])
-
-  const filteredUsers=useMemo(()=>{return filterCountry!=null && filterCountry.length>0? users.filter((user=>{
+  const filteredUsers=useMemo(()=>{return filterCountry!=null && filterCountry.length>0? users?.filter((user=>{
     return user.location?.country.toLowerCase().includes(filterCountry.toLowerCase())
   })):users},[users,filterCountry])
 
@@ -85,7 +72,7 @@ function App() {
       [SortBy.NAME]:user=>user.name?.first,
       [SortBy.LAST]:user=>user.name?.last
     }
-    return filteredUsers.toSorted((a,b)=>{
+    return filteredUsers?.toSorted((a,b)=>{
       const extractProperty=compareProperties[sorting]
       return extractProperty(a).localeCompare(extractProperty(b))
     })
@@ -104,11 +91,10 @@ function App() {
           }} placeholder='Filtra por pais'></input>
         </header>
         <main>
-          {users.length>0 && <ListUser changeSorting={handleChangeSort} deleteUser={handleDelete} showColors={showColors} users={sortedUsers}></ListUser>}
-          {showLoading && <p>Cargando</p>}
-          {!showLoading && showError && <p>Ha habido un error</p>}
-          {!showLoading && !showError && users.length===0 && <p>No hay usuarios</p>}
-          {!showLoading && !showError && <button onClick={()=>{setPage(page+1)}}>Cargar Mas...</button>}
+          {users!=undefined && users.length>0 && <ListUser changeSorting={handleChangeSort} deleteUser={handleDelete} showColors={showColors} users={sortedUsers}></ListUser>}
+          {status === 'pending' && <p>Cargando</p>}
+          {status === 'error' && <p>Error:{error.message}</p>}
+          {status !== 'error' && status !== 'pending' && hasNextPage && <button onClick={()=>{fetchNextPage()}}>Cargar Mas...</button>}
           
         </main>
         
